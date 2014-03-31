@@ -1,0 +1,4 @@
+name = "Redis Sync"
+description = "Sync drupal entity to Redis storage"
+version = VERSION
+core = 7.x

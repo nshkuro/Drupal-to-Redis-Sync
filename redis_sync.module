@@ -1,0 +1,103 @@
+<?php
+
+// @todo: add configuration settings
+
+/**
+ * Implementation hook_init
+ */
+function redis_sync_init() {
+  // include predis library
+  $path = libraries_get_path('predis');
+  require $path . '/autoload.php';
+  Predis\Autoloader::register();
+}
+
+/**
+ * Implementation hook_menu
+ */
+function redis_sync_menu() {
+  $items = array();
+
+  return $items;
+}
+
+/**
+ * Implementation hook_entity_insert
+ */
+function redis_sync_entity_insert($entity, $type) {
+  $key = _redis_sync_hash_key($entity, $type);
+  $hash = _redis_sync_hash($entity);
+  redis_sync_push($key, $hash);
+}
+
+
+/**
+ * Implementation hook_entity_update
+ */
+function redis_sync_entity_update($entity, $type) {
+  $key = _redis_sync_hash_key($entity, $type);
+  $hash = _redis_sync_hash($entity);
+  redis_sync_update($key, $hash);
+}
+
+/**
+ *
+ * Make hash key
+ * based on entity type and entity id
+ *
+ * @param $entity
+ * @param $type
+ * @return string
+ */
+function _redis_sync_hash_key($entity, $type) {
+  $entity_id = array_shift(entity_extract_ids($type, $entity));
+  $key = $type . ':' . $entity_id;
+  return $key;
+}
+
+/**
+ * Make hash
+ * based on entity
+ *
+ * @param $entity
+ * @return array
+ */
+function _redis_sync_hash($entity) {
+  $hash = array();
+  $json = drupal_json_encode($entity);
+  $hash['timestamp'] = time();
+  $hash['md5'] = md5($json);
+  $hash['json'] = $json;
+  return $hash;
+}
+
+/**
+ * Push data to redis
+ * also send pubsub message
+ *
+ * @param $key
+ * @param $hash
+ * @return mixed
+ */
+function redis_sync_push($key, $hash) {
+  $client = new Predis\Client();
+  $res = $client->hmset($key, $hash);
+  $channel = 'entity';
+  $client->publish($channel, $key);
+  return $res;
+}
+
+/**
+ * Update existing hash
+ *
+ * @param $key
+ * @param $hash
+ */
+function redis_sync_update($key, $hash) {
+  $client = new Predis\Client();
+  $value = $client->hgetall($key);
+  if (!empty($value)) {
+    $client->del($key);
+    redis_sync_push($key, $hash);
+  }
+}
