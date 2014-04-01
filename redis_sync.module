@@ -50,7 +50,7 @@ function redis_sync_entity_update($entity, $type) {
  * @return string
  */
 function _redis_sync_hash_key($entity, $type) {
-	$ids = entity_extract_ids($type, $entity);
+  $ids = entity_extract_ids($type, $entity);
   $entity_id = array_shift($ids);
   $key = $type . ':' . $entity_id;
   return $key;
