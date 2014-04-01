@@ -18,6 +18,29 @@ function redis_sync_init() {
 function redis_sync_menu() {
   $items = array();
 
+  $items['admin/config/redis-sync'] = array(
+    'title' => 'Redis Sync Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('redis_sync_admin_form'),
+    'access arguments' => array('administer content'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'redis_sync.admin.inc'
+  );
+
+  $items['admin/config/redis-sync/entity'] = array(
+    'title' => 'Entity settings',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  $items['admin/config/redis-sync/resync'] = array(
+    'title' => 'Re-Sync data',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('redis_sync_admin_resync_form'),
+    'access arguments' => array('administer content'),
+    'file' => 'redis_sync.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+
   return $items;
 }
 
@@ -25,9 +48,22 @@ function redis_sync_menu() {
  * Implementation hook_entity_insert
  */
 function redis_sync_entity_insert($entity, $type) {
-  $key = _redis_sync_hash_key($entity, $type);
-  $hash = _redis_sync_hash($entity);
-  redis_sync_push($key, $hash);
+  $sync_entity_enabled = variable_get('redis_sync_enable_' . $type, 0);
+  if ($sync_entity_enabled) {
+    if ($type == 'node') {
+      $sync_content_type_enabled = variable_get('redis_sync_enable_node_' . $entity->type, 0);
+      if ($sync_content_type_enabled) {
+        $key = _redis_sync_hash_key($entity, $type);
+        $hash = _redis_sync_hash($entity);
+        redis_sync_push($key, $hash);
+      }
+    }
+    else {
+      $key = _redis_sync_hash_key($entity, $type);
+      $hash = _redis_sync_hash($entity);
+      redis_sync_push($key, $hash);
+    }
+  }
 }
 
 
@@ -35,9 +71,22 @@ function redis_sync_entity_insert($entity, $type) {
  * Implementation hook_entity_update
  */
 function redis_sync_entity_update($entity, $type) {
-  $key = _redis_sync_hash_key($entity, $type);
-  $hash = _redis_sync_hash($entity);
-  redis_sync_update($key, $hash);
+  $sync_entity_enabled = variable_get('redis_sync_enable_' . $type, 0);
+  if ($sync_entity_enabled) {
+    if ($type == 'node') {
+      $sync_content_type_enabled = variable_get('redis_sync_enable_node_' . $entity->type, 0);
+      if ($sync_content_type_enabled) {
+        $key = _redis_sync_hash_key($entity, $type);
+        $hash = _redis_sync_hash($entity);
+        redis_sync_update($key, $hash);
+      }
+    }
+    else {
+      $key = _redis_sync_hash_key($entity, $type);
+      $hash = _redis_sync_hash($entity);
+      redis_sync_update($key, $hash);
+    }
+  }
 }
 
 /**
