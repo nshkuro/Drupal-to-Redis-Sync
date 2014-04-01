@@ -1,7 +1,4 @@
 <?php
-
-// @todo: add configuration settings
-
 /**
  * Implementation hook_init
  */
@@ -36,6 +33,15 @@ function redis_sync_menu() {
     'title' => 'Re-Sync data',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('redis_sync_admin_resync_form'),
+    'access arguments' => array('administer content'),
+    'file' => 'redis_sync.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['admin/config/redis-sync/connect'] = array(
+    'title' => 'Connection settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('redis_sync_admin_connection_form'),
     'access arguments' => array('administer content'),
     'file' => 'redis_sync.admin.inc',
     'type' => MENU_LOCAL_TASK,
@@ -130,10 +136,16 @@ function _redis_sync_hash($entity) {
  * @return mixed
  */
 function redis_sync_push($key, $hash) {
-  $client = new Predis\Client();
+  $client = redis_sync_get_client();
   $res = $client->hmset($key, $hash);
+  if ($res) {
+    watchdog('redis sync', t('Hash "@key" has been stored into redis storage', array('@key' => $key)));
+  }
   $channel = 'entity';
-  $client->publish($channel, $key);
+  $m = $client->publish($channel, $key);
+  if ($m) {
+    watchdog('redis sync', t('Message @m has been published in channel @c', array('@m' => $key, '@c' => $channel)));
+  }
   return $res;
 }
 
@@ -144,10 +156,21 @@ function redis_sync_push($key, $hash) {
  * @param $hash
  */
 function redis_sync_update($key, $hash) {
-  $client = new Predis\Client();
+  $client = redis_sync_get_client();
   $value = $client->hgetall($key);
   if (!empty($value)) {
     $client->del($key);
     redis_sync_push($key, $hash);
   }
+}
+
+function redis_sync_get_client() {
+  $config = array(
+    'scheme' => variable_get('redis_sync_scheme', 'tcp'),
+    'host'   => variable_get('redis_sync_host', '127.0.0.1'),
+    'port'   => variable_get('redis_sync_port', 6379),
+    'database' => variable_get('redis_sync_database', 0),
+  );
+  $client = new Predis\Client($config);
+  return $client;
 }

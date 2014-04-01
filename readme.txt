@@ -7,5 +7,4 @@ Install
 1. Install drupal Libraries API module (https://drupal.org/project/libraries)
 2. Clone or download and extract Predis library into sites/all/libraries/predis directory (https://github.com/nrk/predis)
 3. Enable module as usual.
-
-TODO: add configuring section.
+4. Go to configuration page: 'admin/config/redis-sync'

@@ -45,3 +45,38 @@ function redis_sync_admin_resync_form() {
 
   return $form;
 }
+
+function redis_sync_admin_connection_form() {
+  $form = array();
+
+  $form['redis_sync_scheme'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Scheme'),
+    '#description' => t('Connection scheme. Only tcp is currently supported.'),
+    '#default_value' => variable_get('redis_sync_scheme', 'tcp'),
+    '#disabled' => TRUE,
+  );
+
+  $form['redis_sync_host'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Host'),
+    '#description' => t('Redis server host. Default is 127.0.0.1.'),
+    '#default_value' => variable_get('redis_sync_host', '127.0.0.1'),
+  );
+
+  $form['redis_sync_port'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Port'),
+    '#description' => t('Redis server port. Default is 6379.'),
+    '#default_value' => variable_get('redis_sync_port', 6379),
+  );
+
+  $form['redis_sync_database'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Database'),
+    '#description' => t('Redis server database. Default is none, Redis server will autoselect the database 0.'),
+    '#default_value' => variable_get('redis_sync_database', 0),
+  );
+
+  return system_settings_form($form);
+}
