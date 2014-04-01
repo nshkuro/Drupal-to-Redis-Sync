@@ -1,0 +1,55 @@
+<?php
+
+/**
+ * Implements hook_quiz_finished().
+ */
+function redis_quiz_sync_quiz_finished($quiz, $score, $rid) {
+  // Get answers
+  $answers = _quiz_get_answers($quiz, $rid['result_id']);
+
+  // Make fake entity to storing in redis
+  $entity = _redis_quiz_sync_make_object($quiz, $score, $rid, $answers);
+  $key = _redis_quiz_sync_key($rid);
+  $hash = _redis_sync_hash($entity);
+  redis_sync_push($key, $hash);
+}
+
+/**
+ * Implements hook_quiz_scored().
+ */
+function redis_quiz_sync_quiz_scored($quiz, $score, $rid) {
+  // Get answers
+  $answers = _quiz_get_answers($quiz, $rid);
+  // Make fake entity to storing in redis
+  $entity = _redis_quiz_sync_make_object($quiz, $score, $rid, $answers);
+  $key = _redis_quiz_sync_key($rid);
+  $hash = _redis_sync_hash($entity);
+  redis_sync_push($key, $hash);
+}
+
+function _redis_quiz_sync_make_object($quiz, $score, $rid, $answers) {
+  $entity = new stdClass();
+  $entity->quiz = $quiz;
+  $entity->score = $score;
+  $entity->rid = $rid;
+  $entity->answers = $answers;
+  return $entity;
+}
+
+/**
+ * Make hash key
+ * based on Quiz result id
+ *
+ * @param $rid
+ * @return string
+ */
+function _redis_quiz_sync_key($rid) {
+  if (is_array($rid) && isset($rid['result_id'])) {
+    $id = $rid['result_id'];
+  }
+  elseif (is_string($rid)) {
+    $id = $rid;
+  }
+  $key = 'quiz:' . $id;
+  return $key;
+}

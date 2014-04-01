@@ -1,0 +1,6 @@
+name = "Redis Quiz Sync"
+description = "Sync Quiz answers to Redis storage"
+version = VERSION
+core = 7.x
+dependencies[] = redis_sync
+dependencies[] = quiz
