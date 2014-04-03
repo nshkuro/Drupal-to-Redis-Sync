@@ -92,18 +92,6 @@ function redis_sync_admin_resync_form() {
     '#value' => t('Start sync'),
   );
 
-  $query = new EntityFieldQuery;
-
-
-    $query->entityCondition('entity_type', 'node')
-      ->entityOrderBy('entity_id');
-
-  $query = $query->entityCondition('bundle', 'article');
-
-  $result = $query->execute();
-
-  dpm($result);
-
   return $form;
 }
 
