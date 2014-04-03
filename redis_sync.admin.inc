@@ -7,7 +7,6 @@ function redis_sync_admin_form() {
     $form[$type . '_wrapper'] = array(
       '#type' => 'fieldset',
       '#title' => $et['label'],
-      '#weight' => 5,
       '#collapsible' => TRUE,
       '#collapsed' => FALSE,
     );
@@ -39,11 +38,185 @@ function redis_sync_admin_form() {
 
 
 function redis_sync_admin_resync_form() {
-  // TODO: Implement it.
   $form = array();
 
+  $form['redis_sync_mode_wrapper'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Sync mode'),
+    '#collapsible' => FALSE,
+  );
+
+  $form['redis_sync_mode_wrapper']['redis_sync_mode'] = array(
+    '#type' => 'radios',
+    '#title' => t('Sync mode'),
+    '#default_value' => variable_get('redis_sync_mode', 1),
+    '#options' => array(0 => 'Force', 1 => 'Smart'),
+    '#description' => t('ATTENTION: Force mode will remove ALL data from your storage. Smart mode will add missing data.'),
+  );
+
+
+  $ets = entity_get_info();
+  foreach ($ets as $type => $et) {
+    $form[$type . '_wrapper'] = array(
+      '#type' => 'fieldset',
+      '#title' => $et['label'],
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+    );
+    if ($type != 'node') {
+      $form[$type . '_wrapper']['redis_resync_' . $type] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Re-sync @entity_type to redis storage', array('@entity_type' => strtolower($et['label']))),
+        '#return_value' => array('entity_type' => $type),
+      );
+    }
+    else {
+      $cts = node_type_get_types();
+      $form[$type . '_wrapper']['content_types_wrapper'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Content types'),
+        '#collapsible' => FALSE,
+      );
+      foreach ($cts as $ct) {
+        $form[$type . '_wrapper']['content_types_wrapper']['redis_resync_' .$type . '_' . $ct->type] = array(
+          '#type' => 'checkbox',
+          '#title' => t('Re-sync "@type" to redis storage', array('@type' => $ct->name)),
+          '#return_value' => array('entity_type' => $type, 'entity_bundle' => $ct->type),
+        );
+      }
+    }
+  }
+
+  $form['redis_sync_start_sync'] = array(
+    '#type' => 'submit',
+    '#value' => t('Start sync'),
+  );
+
+  $query = new EntityFieldQuery;
+
+
+    $query->entityCondition('entity_type', 'node')
+      ->entityOrderBy('entity_id');
+
+  $query = $query->entityCondition('bundle', 'article');
+
+  $result = $query->execute();
+
+  dpm($result);
 
   return $form;
+}
+
+function redis_sync_admin_resync_form_submit(&$form, &$form_state) {
+  $trash = array(
+    'form_build_id' => 1,
+    'form_token' => 1,
+    'form_id' => 1,
+    'op' => 1,
+    'redis_sync_start_sync' => 1,
+    'redis_sync_mode' => 1,
+  );
+
+  $sync_mode = $form_state['values']['redis_sync_mode'];
+  $sync_values = (array_diff_key($form_state['values'], $trash));
+  $operations = array();
+
+  if (!empty($sync_values)) {
+    foreach ($sync_values as $entity) {
+      if (!empty($entity)) {
+        $entity_type = $entity['entity_type'];
+        $entity_bundle = !empty($entity['entity_bundle']) ? $entity['entity_bundle'] : NULL;
+        $operations[] = array('redis_sync_resync', array($entity_type, $entity_bundle));
+      }
+    }
+  }
+
+  if (!$sync_mode) {
+    $client = redis_sync_get_client();
+    $client->flushdb();
+  }
+
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'redis_sync_admin_batch_finished',
+    'file' => drupal_get_path('module', 'redis_sync') . '/redis_sync.admin.inc',
+  );
+
+  batch_set($batch);
+}
+
+function redis_sync_resync($entity_type, $entity_bundle, &$context) {
+  $count_query = new EntityFieldQuery;
+  $count_query->entityCondition('entity_type', $entity_type)
+
+    ->entityOrderBy('entity_id')
+    ->entityCondition('entity_id', 0, '!=')
+    ->count();
+
+  if ($entity_bundle) {
+    $count_query = $count_query->entityCondition('bundle', $entity_bundle);
+  }
+
+  $count = $count_query->execute();
+
+  if (empty($context['sandbox'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['prev_entity_id'] = 0;
+    $context['sandbox']['max'] = $count;
+  }
+
+  $query = new EntityFieldQuery;
+  $limit = 5;
+
+  $query->entityCondition('entity_type', $entity_type)
+    ->entityCondition('entity_id', $context['sandbox']['prev_entity_id'], '>')
+    ->entityOrderBy('entity_id')
+    ->range(0, $limit);
+
+  if ($entity_bundle) {
+    $query = $query->entityCondition('bundle', $entity_bundle);
+  }
+
+  $result = $query->execute();
+
+  if (!empty($result)) {
+    foreach ($result as $entities) {
+      foreach ($entities as $entity_id => $value) {
+        $entity = entity_load($entity_type, array($entity_id));
+        $entity = array_shift($entity);
+
+        $key = _redis_sync_hash_key($entity, $entity_type);
+        $hash = _redis_sync_hash($entity);
+        $client = redis_sync_get_client();
+        $value = $client->hgetall($key);
+        if (empty($value)) {
+          redis_sync_push($key, $hash);
+        }
+
+        $context['sandbox']['progress']++;
+        $context['sandbox']['prev_entity_id'] = $entity_id;
+        $context['results'][] = $entity_id;
+        $context['message'] = $entity_type . ':' . $entity_id;
+      }
+    }
+  }
+
+  if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+  }
+
+}
+
+function redis_sync_admin_batch_finished($success, $results, $operations) {
+  if ($success) {
+    $message = count($results) .' items processed.';
+    drupal_set_message($message);
+  }
+  else {
+    $error_operation = reset($operations);
+    $message = t('An error occurred while processing %error_operation with arguments: @arguments', array('%error_operation' => $error_operation[0], '@arguments' => print_r($error_operation[1], TRUE)));
+    drupal_set_message($message, 'error');
+  }
 }
 
 function redis_sync_admin_connection_form() {
