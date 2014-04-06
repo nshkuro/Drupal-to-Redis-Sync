@@ -5,8 +5,15 @@
 function redis_sync_init() {
   // include predis library
   $path = libraries_get_path('predis');
-  require $path . '/autoload.php';
-  Predis\Autoloader::register();
+  $autoloader = $path . '/autoload.php';
+  if (file_exists($autoloader)) {
+    require $autoloader;
+    Predis\Autoloader::register();
+  }
+  else {
+    drupal_set_message(t('Predis library not found. Please check directory: "@path"', array('@path' => $path)), 'warning');
+  }
+
 }
 
 /**

@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * Implements hook_requirements().
+ */
+function redis_sync_requirements($phase) {
+
+  // This module is configured via settings.php file. Using any other phase
+  // than runtime to proceed to some consistency checks is useless.
+  if ('runtime' !== $phase) {
+    return array();
+  }
+
+  $client = redis_sync_get_client();
+
+  $requirements = array();
+
+  if ($client) {
+    $requirements['redis_sync'] = array(
+      'title'       => "Redis Sync",
+      'value'       => t("Predis library installed and connected to server."),
+      'severity'    => REQUIREMENT_OK,
+    );
+  }
+  else {
+    $requirements['redis_sync'] = array(
+      'title'       => "Redis Sync",
+      'value'       => t("Not connected."),
+      'severity'    => REQUIREMENT_WARNING,
+      'description' => t("No connected to Redis server. Please check your predis library"),
+    );
+  }
+
+  return $requirements;
+}
