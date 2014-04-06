@@ -67,7 +67,7 @@ function redis_sync_admin_resync_form() {
       $form[$type . '_wrapper']['redis_resync_' . $type] = array(
         '#type' => 'checkbox',
         '#title' => t('Re-sync @entity_type to redis storage', array('@entity_type' => strtolower($et['label']))),
-        '#return_value' => array('entity_type' => $type),
+        '#return_value' => serialize(array('entity_type' => $type)),
       );
     }
     else {
@@ -81,7 +81,7 @@ function redis_sync_admin_resync_form() {
         $form[$type . '_wrapper']['content_types_wrapper']['redis_resync_' .$type . '_' . $ct->type] = array(
           '#type' => 'checkbox',
           '#title' => t('Re-sync "@type" to redis storage', array('@type' => $ct->name)),
-          '#return_value' => array('entity_type' => $type, 'entity_bundle' => $ct->type),
+          '#return_value' => serialize(array('entity_type' => $type, 'entity_bundle' => $ct->type)),
         );
       }
     }
@@ -109,9 +109,11 @@ function redis_sync_admin_resync_form_submit(&$form, &$form_state) {
   $sync_values = (array_diff_key($form_state['values'], $trash));
   $operations = array();
 
+
   if (!empty($sync_values)) {
     foreach ($sync_values as $entity) {
       if (!empty($entity)) {
+        $entity = unserialize($entity);
         $entity_type = $entity['entity_type'];
         $entity_bundle = !empty($entity['entity_bundle']) ? $entity['entity_bundle'] : NULL;
         $operations[] = array('redis_sync_resync', array($entity_type, $entity_bundle));
