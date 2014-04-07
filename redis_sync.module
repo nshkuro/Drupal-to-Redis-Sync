@@ -13,7 +13,6 @@ function redis_sync_init() {
   else {
     drupal_set_message(t('Predis library not found. Please check directory: "@path"', array('@path' => $path)), 'warning');
   }
-
 }
 
 /**
@@ -68,6 +67,7 @@ function redis_sync_entity_insert($entity, $type) {
       $sync_content_type_enabled = variable_get('redis_sync_enable_node_' . $entity->type, 0);
       if ($sync_content_type_enabled) {
         $key = _redis_sync_hash_key($entity, $type);
+        $entity = _redis_sync_exclude_fields($entity);
         $hash = _redis_sync_hash($entity);
         redis_sync_push($key, $hash);
       }
@@ -91,6 +91,7 @@ function redis_sync_entity_update($entity, $type) {
       $sync_content_type_enabled = variable_get('redis_sync_enable_node_' . $entity->type, 0);
       if ($sync_content_type_enabled) {
         $key = _redis_sync_hash_key($entity, $type);
+        $entity = _redis_sync_exclude_fields($entity);
         $hash = _redis_sync_hash($entity);
         redis_sync_update($key, $hash);
       }
@@ -181,4 +182,24 @@ function redis_sync_get_client() {
   );
   $client = new Predis\Client($config);
   return $client;
+}
+
+/**
+ *
+ * Remove disabled fields from entity
+ *
+ * @param $entity
+ * @return mixed
+ */
+function _redis_sync_exclude_fields($entity) {
+  $fields = field_info_instances('node', $entity->type);
+  if (!empty($fields)) {
+    foreach ($fields as $field) {
+      $enabled = variable_get('redis_sync_enable_node_' . $entity->type . '_' . $field['field_name'], 1);
+      if (!$enabled) {
+        unset($entity->{$field['field_name']});
+      }
+    }
+  }
+  return $entity;
 }

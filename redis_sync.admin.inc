@@ -18,6 +18,7 @@ function redis_sync_admin_form() {
   }
   if (variable_get('redis_sync_enable_node')) {
     $cts = node_type_get_types();
+
     $form['node_wrapper']['content_types_wrapper'] = array(
       '#type' => 'fieldset',
       '#title' => t('Content types'),
@@ -25,13 +26,38 @@ function redis_sync_admin_form() {
       '#collapsible' => FALSE,
     );
     foreach ($cts as $ct) {
-      $form['node_wrapper']['content_types_wrapper']['redis_sync_enable_node_' . $ct->type] = array(
+      $fields = field_info_instances('node', $ct->type);
+
+      $form['node_wrapper']['content_types_wrapper']['node_' . $ct->type . '_wrapper'] = array(
+        '#type' => 'fieldset',
+        '#title' => $ct->name,
+        '#weight' => 5,
+        '#collapsible' => FALSE,
+      );
+
+      $form['node_wrapper']['content_types_wrapper']['node_' . $ct->type . '_wrapper']['redis_sync_enable_node_' . $ct->type] = array(
         '#type' => 'checkbox',
         '#title' => t('Enable synchronisation "@type" to redis storage', array('@type' => $ct->name)),
         '#default_value' => variable_get('redis_sync_enable_node_' . $ct->type),
       );
-    }
 
+      $form['node_wrapper']['content_types_wrapper']['node_' . $ct->type . '_wrapper']['fields_wrapper'] = array(
+        '#type' => 'fieldset',
+        '#title' => $ct->name . ' fields',
+        '#weight' => 5,
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+      );
+      if (!empty($fields)) {
+        foreach ($fields as $field) {
+          $form['node_wrapper']['content_types_wrapper']['node_' . $ct->type . '_wrapper']['fields_wrapper']['redis_sync_enable_node_' . $ct->type . '_' . $field['field_name']] = array(
+            '#type' => 'checkbox',
+            '#title' => t('"@field"', array('@field' => $field['label'])),
+            '#default_value' => variable_get('redis_sync_enable_node_' . $ct->type . '_' . $field['field_name'], 1),
+          );
+        }
+      }
+    }
   }
   return system_settings_form($form);
 }
