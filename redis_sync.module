@@ -22,8 +22,9 @@ function redis_sync_init() {
 function redis_sync_menu() {
   $items = array();
 
-  $items['admin/config/redis-sync'] = array(
-    'title' => 'Redis Sync Settings',
+  $items['admin/data-export/redis-sync'] = array(
+    'title' => 'Data Export',
+    'description' => t('Administer export content to redis'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('redis_sync_admin_form'),
     'access arguments' => array('administer content'),
@@ -31,12 +32,12 @@ function redis_sync_menu() {
     'file' => 'redis_sync.admin.inc'
   );
 
-  $items['admin/config/redis-sync/entity'] = array(
+  $items['admin/data-export/redis-sync/entity'] = array(
     'title' => 'Entity settings',
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
 
-  $items['admin/config/redis-sync/resync'] = array(
+  $items['admin/data-export/redis-sync/resync'] = array(
     'title' => 'Re-Sync data',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('redis_sync_admin_resync_form'),
@@ -45,7 +46,7 @@ function redis_sync_menu() {
     'type' => MENU_LOCAL_TASK,
   );
 
-  $items['admin/config/redis-sync/connect'] = array(
+  $items['admin/data-export/redis-sync/connect'] = array(
     'title' => 'Connection settings',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('redis_sync_admin_connection_form'),
