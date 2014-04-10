@@ -91,6 +91,9 @@ function redis_sync_entity_update($entity, $type) {
       $sync_content_type_enabled = variable_get('redis_sync_enable_node_' . $entity->type, 0);
       if ($sync_content_type_enabled) {
         $key = _redis_sync_hash_key($entity, $type);
+        if (isset($entity->original)) {
+          unset($entity->original);
+        }
         $entity = _redis_sync_exclude_fields($entity);
         $hash = _redis_sync_hash($entity);
         redis_sync_update($key, $hash);
