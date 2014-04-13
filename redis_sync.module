@@ -119,7 +119,13 @@ function redis_sync_entity_update($entity, $type) {
 function _redis_sync_hash_key($entity, $type) {
   $ids = entity_extract_ids($type, $entity);
   $entity_id = array_shift($ids);
-  $key = $type . ':' . $entity_id;
+  $pattern = variable_get('redis_sync_key_pattern_' . $type, NULL);
+  if ($pattern && $pattern != 'entity_type:entity_id') {
+    $key = token_replace($pattern, array($type => $entity));
+  }
+  else {
+    $key = $type . ':' . $entity_id;
+  }
   return $key;
 }
 
@@ -172,8 +178,8 @@ function redis_sync_update($key, $hash) {
   $value = $client->hgetall($key);
   if (!empty($value)) {
     $client->del($key);
-    redis_sync_push($key, $hash);
   }
+  redis_sync_push($key, $hash);
 }
 
 function redis_sync_get_client() {

@@ -15,6 +15,34 @@ function redis_sync_admin_form() {
       '#title'  => t('Enable @entity_type synchronisation to redis storage', array('@entity_type' => strtolower($et['label']))),
       '#default_value' => variable_get('redis_sync_enable_' . $type),
     );
+
+    if (variable_get('redis_sync_enable_' . $type)) {
+      $form[$type . '_wrapper']['redis_sync_key_pattern_wrapper'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Hash key configuration'),
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+      );
+      $description = t("You can define hash keys with tokens. By default key looks like entity_type:entity_id, for example node:25 or user:1.
+        Install token module for viewing all available patterns.");
+      if (module_exists('token')) {
+        $form[$type . '_wrapper']['redis_sync_key_pattern_wrapper'] ['token_tree'] = array(
+          '#type' => 'fieldset',
+          '#title' => t('Replacement patterns'),
+          '#collapsible' => TRUE,
+          '#collapsed' => TRUE,
+          '#description' => theme('token_tree', array('token_types' => array($type))),
+          '#weight' => 10,
+        );
+        $description = t("You can define hash keys with tokens. By default key looks like entity_type:entity_id, for example node:25 or user:1.");
+      }
+      $form[$type . '_wrapper']['redis_sync_key_pattern_wrapper']['redis_sync_key_pattern_' . $type] = array(
+        '#type' => 'textfield',
+        '#title' => t('Hash key pattern'),
+        '#description' => $description,
+        '#default_value' => variable_get('redis_sync_key_pattern_' . $type, 'entity_type:entity_id'),
+      );
+    }
   }
   if (variable_get('redis_sync_enable_node')) {
     $cts = node_type_get_types();
