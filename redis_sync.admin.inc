@@ -23,7 +23,7 @@ function redis_sync_admin_form() {
         '#collapsible' => TRUE,
         '#collapsed' => FALSE,
       );
-      $description = t("You can define hash keys with tokens. By default key looks like entity_type:entity_id, for example node:25 or user:1.
+      $description = t("You can define hash keys with tokens. By default key looks like 'entity_type:entity_id', for example 'node:25' or 'user:1'.
         Install token module for viewing all available patterns.");
       if (module_exists('token')) {
         $form[$type . '_wrapper']['redis_sync_key_pattern_wrapper'] ['token_tree'] = array(
@@ -34,7 +34,7 @@ function redis_sync_admin_form() {
           '#description' => theme('token_tree', array('token_types' => array($type))),
           '#weight' => 10,
         );
-        $description = t("You can define hash keys with tokens. By default key looks like entity_type:entity_id, for example node:25 or user:1.");
+        $description = t("You can define hash keys with tokens. By default key looks like 'entity_type:entity_id', for example 'node:25' or 'user:1'.");
       }
       $form[$type . '_wrapper']['redis_sync_key_pattern_wrapper']['redis_sync_key_pattern_' . $type] = array(
         '#type' => 'textfield',
@@ -51,7 +51,8 @@ function redis_sync_admin_form() {
       '#type' => 'fieldset',
       '#title' => t('Content types'),
       '#weight' => 5,
-      '#collapsible' => FALSE,
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
     );
     foreach ($cts as $ct) {
       $fields = field_info_instances('node', $ct->type);
