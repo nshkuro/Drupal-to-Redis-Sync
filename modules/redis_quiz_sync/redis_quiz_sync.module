@@ -10,7 +10,7 @@ function redis_quiz_sync_quiz_finished($quiz, $score, $rid) {
   // Make fake entity to storing in redis
   $entity = _redis_quiz_sync_make_object($quiz, $score, $rid, $answers);
   $key = _redis_quiz_sync_key($rid);
-  $hash = _redis_sync_hash($entity);
+  $hash = _redis_sync_hash($entity, 'quiz');
   redis_sync_push($key, $hash);
 }
 
@@ -23,7 +23,7 @@ function redis_quiz_sync_quiz_scored($quiz, $score, $rid) {
   // Make fake entity to storing in redis
   $entity = _redis_quiz_sync_make_object($quiz, $score, $rid, $answers);
   $key = _redis_quiz_sync_key($rid);
-  $hash = _redis_sync_hash($entity);
+  $hash = _redis_sync_hash($entity, 'quiz');
   redis_sync_push($key, $hash);
 }
 

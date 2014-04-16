@@ -231,7 +231,7 @@ function redis_sync_resync($entity_type, $entity_bundle, &$context) {
         $entity = array_shift($entity);
 
         $key = _redis_sync_hash_key($entity, $entity_type);
-        $hash = _redis_sync_hash($entity);
+        $hash = _redis_sync_hash($entity, $entity_type);
         $client = redis_sync_get_client();
         $value = $client->hgetall($key);
         if (empty($value)) {
