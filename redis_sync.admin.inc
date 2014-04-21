@@ -267,7 +267,14 @@ function redis_sync_admin_batch_finished($success, $results, $operations) {
 function redis_sync_admin_connection_form() {
   $form = array();
 
-  $form['redis_sync_scheme'] = array(
+  $form['redis_sync_connection'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Connection'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+
+  $form['redis_sync_connection']['redis_sync_scheme'] = array(
     '#type' => 'textfield',
     '#title' => t('Scheme'),
     '#description' => t('Connection scheme. Only tcp is currently supported.'),
@@ -275,40 +282,91 @@ function redis_sync_admin_connection_form() {
     '#disabled' => TRUE,
   );
 
-  $form['redis_sync_host'] = array(
+  $form['redis_sync_connection']['redis_sync_host'] = array(
     '#type' => 'textfield',
     '#title' => t('Host'),
     '#description' => t('Redis server host. Default is 127.0.0.1.'),
     '#default_value' => variable_get('redis_sync_host', '127.0.0.1'),
   );
 
-  $form['redis_sync_port'] = array(
+  $form['redis_sync_connection']['redis_sync_port'] = array(
     '#type' => 'textfield',
     '#title' => t('Port'),
     '#description' => t('Redis server port. Default is 6379.'),
     '#default_value' => variable_get('redis_sync_port', 6379),
   );
 
-  $form['redis_sync_database'] = array(
+  $form['redis_sync_connection']['redis_sync_database'] = array(
     '#type' => 'textfield',
     '#title' => t('Database'),
     '#description' => t('Redis server database. Default is none, Redis server will autoselect the database 0.'),
     '#default_value' => variable_get('redis_sync_database', 0),
   );
 
-  $form['redis_sync_password'] = array(
+  $form['redis_sync_connection']['redis_sync_password'] = array(
     '#type' => 'textfield',
     '#title' => t('Password'),
     '#description' => t('Redis server password.'),
     '#default_value' => variable_get('redis_sync_password', ''),
   );
 
-  $form['redis_sync_pubsub_channel'] = array(
+  $form['redis_sync_connection']['redis_sync_pubsub_channel'] = array(
     '#type' => 'textfield',
     '#title' => t('Pub/Sub Channel'),
     '#description' => t('Redis pub/sub channel.'),
     '#default_value' => variable_get('redis_sync_pubsub_channel', ''),
   );
 
+  $openssl = !function_exists('openssl_encrypt');
+
+  $form['redis_sync_encryption'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Encryption'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+
+  $form['redis_sync_encryption']['redis_sync_encryption_enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enable encryption'),
+    '#default_value' => variable_get('redis_sync_encryption_enabled'),
+    '#disabled' => $openssl,
+  );
+
+  $form['redis_sync_encryption']['redis_sync_encryption_method'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Encryption method'),
+    '#description' => t('OpenSSL encryption method. By default AES 128 CBC'),
+    '#default_value' => variable_get('redis_sync_encryption_method', 'aes-128-cbc'),
+    '#disabled' => $openssl,
+  );
+
+  $form['redis_sync_encryption']['redis_sync_encryption_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Encryption key'),
+    '#description' => t("Please make sure that your value is correct. For example, for 128/256 bit AES encryption key size should be of 16/32 bytes (128/256 bits)"),
+    '#default_value' => variable_get('redis_sync_encryption_key', '1234567890123456'),
+    '#maxlength' => 32,
+    '#disabled' => $openssl,
+  );
+  $form['redis_sync_encryption']['redis_sync_encryption_iv'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Initialization vector'),
+    '#description' => t('Please make sure that your value is correct. For example, for 128/256 bit AES encryption, initialization vector (iv) size should be 16/32 bytes'),
+    '#default_value' => variable_get('redis_sync_encryption_iv', '1234567890123456'),
+    '#maxlength' => 32,
+    '#disabled' => $openssl,
+  );
   return system_settings_form($form);
+}
+
+function redis_sync_admin_connection_form_validate(&$form, &$form_state) {
+  if ($form_state['values']['redis_sync_encryption_enabled']) {
+    $iv = $form_state['values']['redis_sync_encryption_iv'];
+    $method = $form_state['values']['redis_sync_encryption_method'];
+    $iv_length = openssl_cipher_iv_length($method);
+    if ($iv_length != strlen($iv)) {
+      form_set_error('redis_sync_encryption_iv', t('Length of initialization vector is incorrect'));
+    }
+  }
 }

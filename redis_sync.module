@@ -149,8 +149,19 @@ function _redis_sync_hash($entity, $entity_type) {
       unset($entity->{$field_key});
     }
   }
+
   $meta = drupal_json_encode($entity);
   $core = drupal_json_encode($core);
+
+  $encryption_enabled = variable_get('redis_sync_encryption_enabled', FALSE);
+  if (function_exists('openssl_encrypt') &&  $encryption_enabled) {
+    $encryption_method = variable_get('redis_sync_encryption_method');
+    $encryption_key = variable_get('redis_sync_encryption_key');
+    $iv = variable_get('redis_sync_encryption_iv');
+    $meta = openssl_encrypt($meta, $encryption_method, $encryption_key, FALSE, $iv);
+    $core = openssl_encrypt($core, $encryption_method, $encryption_key, FALSE, $iv);
+  }
+
   $hash['id'] = $entity_id;
   $hash['timestamp'] = time();
   $hash['core'] = $core;
