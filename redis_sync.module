@@ -172,7 +172,7 @@ function redis_sync_push($key, $hash) {
   if ($res) {
     watchdog('redis sync', t('Hash "@key" has been stored into redis storage', array('@key' => $key)));
   }
-  $channel = 'entity';
+  $channel = variable_get('redis_sync_pubsub_channel', 'entity');
   $m = $client->publish($channel, $key);
   if ($m) {
     watchdog('redis sync', t('Message @m has been published in channel @c', array('@m' => $key, '@c' => $channel)));
@@ -201,6 +201,7 @@ function redis_sync_get_client() {
     'host'   => variable_get('redis_sync_host', '127.0.0.1'),
     'port'   => variable_get('redis_sync_port', 6379),
     'database' => variable_get('redis_sync_database', 0),
+    'password' => variable_get('redis_sync_password', ''),
   );
   $client = new Predis\Client($config);
   return $client;

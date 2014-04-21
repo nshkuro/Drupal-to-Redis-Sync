@@ -296,5 +296,19 @@ function redis_sync_admin_connection_form() {
     '#default_value' => variable_get('redis_sync_database', 0),
   );
 
+  $form['redis_sync_password'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Password'),
+    '#description' => t('Redis server password.'),
+    '#default_value' => variable_get('redis_sync_password', ''),
+  );
+
+  $form['redis_sync_pubsub_channel'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Pub/Sub Channel'),
+    '#description' => t('Redis pub/sub channel.'),
+    '#default_value' => variable_get('redis_sync_pubsub_channel', ''),
+  );
+
   return system_settings_form($form);
 }
