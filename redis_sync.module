@@ -63,20 +63,13 @@ function redis_sync_menu() {
 function redis_sync_entity_insert($entity, $type) {
   $sync_entity_enabled = variable_get('redis_sync_enable_' . $type, 0);
   if ($sync_entity_enabled) {
-    if ($type == 'node') {
-      $sync_content_type_enabled = variable_get('redis_sync_enable_node_' . $entity->type, 0);
-      if ($sync_content_type_enabled) {
-        $key = _redis_sync_hash_key($entity, $type);
-        $entity = _redis_sync_exclude_fields($entity);
-        $hash = _redis_sync_hash($entity, $type);
-        redis_sync_push($key, $hash);
-      }
+    $key = _redis_sync_hash_key($entity, $type);
+    if (isset($entity->original)) {
+      unset($entity->original);
     }
-    else {
-      $key = _redis_sync_hash_key($entity, $type);
-      $hash = _redis_sync_hash($entity, $type);
-      redis_sync_push($key, $hash);
-    }
+    $entity = _redis_sync_exclude_fields($entity, $type);
+    $hash = _redis_sync_hash($entity, $type);
+    redis_sync_push($key, $hash);
   }
 }
 
@@ -87,23 +80,13 @@ function redis_sync_entity_insert($entity, $type) {
 function redis_sync_entity_update($entity, $type) {
   $sync_entity_enabled = variable_get('redis_sync_enable_' . $type, 0);
   if ($sync_entity_enabled) {
-    if ($type == 'node') {
-      $sync_content_type_enabled = variable_get('redis_sync_enable_node_' . $entity->type, 0);
-      if ($sync_content_type_enabled) {
-        $key = _redis_sync_hash_key($entity, $type);
-        if (isset($entity->original)) {
-          unset($entity->original);
-        }
-        $entity = _redis_sync_exclude_fields($entity);
-        $hash = _redis_sync_hash($entity, $type);
-        redis_sync_update($key, $hash);
-      }
+    $key = _redis_sync_hash_key($entity, $type);
+    if (isset($entity->original)) {
+      unset($entity->original);
     }
-    else {
-      $key = _redis_sync_hash_key($entity, $type);
-      $hash = _redis_sync_hash($entity, $type);
-      redis_sync_update($key, $hash);
-    }
+    $entity = _redis_sync_exclude_fields($entity, $type);
+    $hash = _redis_sync_hash($entity, $type);
+    redis_sync_update($key, $hash);
   }
 }
 
@@ -223,13 +206,17 @@ function redis_sync_get_client() {
  * Remove disabled fields from entity
  *
  * @param $entity
+ * @param $entity_type
  * @return mixed
  */
-function _redis_sync_exclude_fields($entity) {
-  $fields = field_info_instances('node', $entity->type);
+function _redis_sync_exclude_fields($entity, $entity_type) {
+  $ids = entity_extract_ids($entity_type, $entity);
+  $bundle = array_pop($ids);
+  $fields = field_info_instances($entity_type, $bundle);
   if (!empty($fields)) {
     foreach ($fields as $field) {
-      $enabled = variable_get('redis_sync_enable_node_' . $entity->type . '_' . $field['field_name'], 1);
+      $var = 'redis_sync_enable_' . $entity_type . '_' . $bundle . '_' . $field['field_name'];
+      $enabled = variable_get($var, 1);
       if (!$enabled) {
         unset($entity->{$field['field_name']});
       }

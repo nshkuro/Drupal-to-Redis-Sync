@@ -4,6 +4,7 @@ function redis_sync_admin_form() {
   $form = array();
   $ets = entity_get_info();
   foreach ($ets as $type => $et) {
+    $entity_info = entity_get_info($type);
     $form[$type . '_wrapper'] = array(
       '#type' => 'fieldset',
       '#title' => $et['label'],
@@ -42,48 +43,60 @@ function redis_sync_admin_form() {
         '#description' => $description,
         '#default_value' => variable_get('redis_sync_key_pattern_' . $type, 'entity_type:entity_id'),
       );
-    }
-  }
-  if (variable_get('redis_sync_enable_node')) {
-    $cts = node_type_get_types();
 
-    $form['node_wrapper']['content_types_wrapper'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Content types'),
-      '#weight' => 5,
-      '#collapsible' => TRUE,
-      '#collapsed' => FALSE,
-    );
-    foreach ($cts as $ct) {
-      $fields = field_info_instances('node', $ct->type);
-
-      $form['node_wrapper']['content_types_wrapper']['node_' . $ct->type . '_wrapper'] = array(
-        '#type' => 'fieldset',
-        '#title' => $ct->name,
-        '#weight' => 5,
-        '#collapsible' => FALSE,
-      );
-
-      $form['node_wrapper']['content_types_wrapper']['node_' . $ct->type . '_wrapper']['redis_sync_enable_node_' . $ct->type] = array(
-        '#type' => 'checkbox',
-        '#title' => t('Enable synchronisation "@type" to redis storage', array('@type' => $ct->name)),
-        '#default_value' => variable_get('redis_sync_enable_node_' . $ct->type),
-      );
-
-      $form['node_wrapper']['content_types_wrapper']['node_' . $ct->type . '_wrapper']['fields_wrapper'] = array(
-        '#type' => 'fieldset',
-        '#title' => $ct->name . ' fields',
-        '#weight' => 5,
-        '#collapsible' => TRUE,
-        '#collapsed' => TRUE,
-      );
-      if (!empty($fields)) {
-        foreach ($fields as $field) {
-          $form['node_wrapper']['content_types_wrapper']['node_' . $ct->type . '_wrapper']['fields_wrapper']['redis_sync_enable_node_' . $ct->type . '_' . $field['field_name']] = array(
-            '#type' => 'checkbox',
-            '#title' => t('"@field"', array('@field' => $field['label'])),
-            '#default_value' => variable_get('redis_sync_enable_node_' . $ct->type . '_' . $field['field_name'], 1),
+      if (!empty($entity_info['bundles']) && (count($entity_info['bundles']) > 1 || !empty($entity_info['bundle keys']))) {
+        foreach ($entity_info['bundles'] as $bundle_key => $bundle_value) {
+          $form[$type . '_wrapper']['bundle_wrapper'][$type . '_' . $bundle_key . '_wrapper'] = array(
+            '#type' => 'fieldset',
+            '#title' => $bundle_value['label'],
+            '#weight' => 5,
+            '#collapsible' => FALSE,
           );
+
+          $form[$type . '_wrapper']['bundle_wrapper'][$type . '_' . $bundle_key . '_wrapper']['redis_sync_enable_' . $type . '_' . $bundle_key] = array(
+            '#type' => 'checkbox',
+            '#title' => t('Enable synchronisation "@type" to redis storage', array('@type' => $bundle_value['label'])),
+            '#default_value' => variable_get('redis_sync_enable_' . $type . '_' . $bundle_key),
+          );
+
+          $fields = field_info_instances($type, $bundle_key);
+
+          if (!empty($fields)) {
+            $form[$type . '_wrapper']['bundle_wrapper'][$type . '_' . $bundle_key . '_wrapper']['fields_wrapper'] = array(
+              '#type' => 'fieldset',
+              '#title' => $bundle_value['label'] . ' fields',
+              '#weight' => 5,
+              '#collapsible' => TRUE,
+              '#collapsed' => TRUE,
+            );
+            foreach ($fields as $field) {
+              $form[$type . '_wrapper']['bundle_wrapper'][$type . '_' . $bundle_key . '_wrapper']['fields_wrapper']['redis_sync_enable_' . $type . '_' . $bundle_key . '_' . $field['field_name']] = array(
+                '#type' => 'checkbox',
+                '#title' => t('"@field"', array('@field' => $field['label'])),
+                '#default_value' => variable_get('redis_sync_enable_' . $type . '_' . $bundle_key . '_' . $field['field_name'], 1),
+              );
+            }
+          }
+        }
+      }
+      else {
+        $fields = field_info_instances($type, $type);
+        $bundle_key = $type;
+        if (!empty($fields)) {
+          $form[$type . '_wrapper']['bundle_wrapper'][$type . '_' . $bundle_key . '_wrapper']['fields_wrapper'] = array(
+            '#type' => 'fieldset',
+            '#title' => $et['label'] . ' fields',
+            '#weight' => 5,
+            '#collapsible' => TRUE,
+            '#collapsed' => TRUE,
+          );
+          foreach ($fields as $field) {
+            $form[$type . '_wrapper']['bundle_wrapper'][$type . '_' . $bundle_key . '_wrapper']['fields_wrapper']['redis_sync_enable_' . $type . '_' . $bundle_key . '_' . $field['field_name']] = array(
+              '#type' => 'checkbox',
+              '#title' => t('"@field"', array('@field' => $field['label'])),
+              '#default_value' => variable_get('redis_sync_enable_' . $type . '_' . $bundle_key . '_' . $field['field_name'], 1),
+            );
+          }
         }
       }
     }
@@ -112,31 +125,35 @@ function redis_sync_admin_resync_form() {
 
   $ets = entity_get_info();
   foreach ($ets as $type => $et) {
-    $form[$type . '_wrapper'] = array(
-      '#type' => 'fieldset',
-      '#title' => $et['label'],
-      '#collapsible' => TRUE,
-      '#collapsed' => FALSE,
-    );
-    if ($type != 'node') {
-      $form[$type . '_wrapper']['redis_resync_' . $type] = array(
-        '#type' => 'checkbox',
-        '#title' => t('Re-sync @entity_type to redis storage', array('@entity_type' => strtolower($et['label']))),
-        '#return_value' => serialize(array('entity_type' => $type)),
-      );
-    }
-    else {
-      $cts = node_type_get_types();
-      $form[$type . '_wrapper']['content_types_wrapper'] = array(
+    if (variable_get('redis_sync_enable_' . $type)) {
+      $form[$type . '_wrapper'] = array(
         '#type' => 'fieldset',
-        '#title' => t('Content types'),
-        '#collapsible' => FALSE,
+        '#title' => $et['label'],
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
       );
-      foreach ($cts as $ct) {
-        $form[$type . '_wrapper']['content_types_wrapper']['redis_resync_' .$type . '_' . $ct->type] = array(
+
+      $entity_info = entity_get_info($type);
+
+      if (!empty($entity_info['bundles']) && (count($entity_info['bundles']) > 1 || !empty($entity_info['bundle keys']))) {
+        $form[$type . '_wrapper']['bundle_wrapper'] = array(
+          '#type' => 'fieldset',
+          '#title' => t('Bundles'),
+          '#collapsible' => FALSE,
+        );
+        foreach ($entity_info['bundles'] as $bundle_key => $bundle_value) {
+          $form[$type . '_wrapper']['bundle_wrapper']['redis_resync_' . $type . '_' . $bundle_key] = array(
+            '#type' => 'checkbox',
+            '#title' => t('Re-sync "@type" to redis storage', array('@type' => $bundle_value['label'])),
+            '#return_value' => serialize(array('entity_type' => $type, 'entity_bundle' => $bundle_key)),
+          );
+        }
+      }
+      else {
+        $form[$type . '_wrapper']['redis_resync_' . $type] = array(
           '#type' => 'checkbox',
-          '#title' => t('Re-sync "@type" to redis storage', array('@type' => $ct->name)),
-          '#return_value' => serialize(array('entity_type' => $type, 'entity_bundle' => $ct->type)),
+          '#title' => t('Re-sync @entity_type to redis storage', array('@entity_type' => strtolower($et['label']))),
+          '#return_value' => serialize(array('entity_type' => $type)),
         );
       }
     }
