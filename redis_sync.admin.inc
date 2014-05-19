@@ -142,11 +142,13 @@ function redis_sync_admin_resync_form() {
           '#collapsible' => FALSE,
         );
         foreach ($entity_info['bundles'] as $bundle_key => $bundle_value) {
-          $form[$type . '_wrapper']['bundle_wrapper']['redis_resync_' . $type . '_' . $bundle_key] = array(
-            '#type' => 'checkbox',
-            '#title' => t('Re-sync "@type" to redis storage', array('@type' => $bundle_value['label'])),
-            '#return_value' => serialize(array('entity_type' => $type, 'entity_bundle' => $bundle_key)),
-          );
+          if (variable_get('redis_sync_enable_' . $type . '_' . $bundle_key)) {
+            $form[$type . '_wrapper']['bundle_wrapper']['redis_resync_' . $type . '_' . $bundle_key] = array(
+              '#type' => 'checkbox',
+              '#title' => t('Re-sync "@type" to redis storage', array('@type' => $bundle_value['label'])),
+              '#return_value' => serialize(array('entity_type' => $type, 'entity_bundle' => $bundle_key)),
+            );
+          }
         }
       }
       else {
